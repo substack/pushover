@@ -67,6 +67,10 @@ Git.prototype.handle = function (req, res, next) {
     && (m = u.pathname.match(/\/([^\/]+)\/info\/refs$/))) {
         var repo = m[1];
         
+        self.exists(repo, function(exists) {
+            if (!exists) self.create(repo)
+        });
+        
         if (!params.service) {
             res.statusCode = 400;
             res.end('service parameter required');
@@ -103,6 +107,11 @@ Git.prototype.handle = function (req, res, next) {
     else if (req.method === 'GET'
     && (m = u.pathname.match(/^\/([^\/]+)\/HEAD$/))) {
         var repo = m[1];
+
+        self.exists(repo, function(exists) {
+            if (!exists) self.create(repo)
+        });
+        
         var file = path.join(repoDir, repo, '.git', 'HEAD');
         path.exists(file, function (ex) {
             if (ex) fs.createReadStream(file).pipe(res)
