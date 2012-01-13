@@ -5,8 +5,8 @@ var path = require('path');
 var http = require('http');
 
 var spawn = require('child_process').spawn;
+var exec = require('child_process').exec;
 var EventEmitter = require('events').EventEmitter;
-
 var seq = require('seq');
 
 module.exports = function (repoDir, opts) {
@@ -17,6 +17,7 @@ module.exports = function (repoDir, opts) {
 function Git (repoDir, opts) {
     this.repoDir = repoDir;
     this.autoCreate = opts.autoCreate === false ? false : true;
+    this.checkout = opts.checkout;
 }
 
 Git.prototype = new EventEmitter;
@@ -38,7 +39,11 @@ Git.prototype.exists = function (repo, cb) {
 Git.prototype.create = function (repo, cb) {
     var cwd = process.cwd();
     var dir = path.join(this.repoDir, repo);
-    var ps = spawn('git', [ 'init', '--bare', dir ]);
+    if (self.checkout) {
+        var ps = spawn('git', [ 'init', dir ]);
+    } else {
+        var ps = spawn('git', [ 'init', '--bare', dir ]);
+    }
     
     var err = '';
     ps.stderr.on('data', function (buf) { err += buf });
@@ -68,6 +73,7 @@ Git.prototype.handle = function (req, res, next) {
     if (req.method === 'GET'
     && (m = u.pathname.match(/\/([^\/]+)\/info\/refs$/))) {
         var repo = m[1];
+        var repopath = self.checkout ? path.join(repoDir, repo, '.git') : path.join(repoDir, repo)
         
         if (!params.service) {
             res.statusCode = 400;
@@ -87,7 +93,7 @@ Git.prototype.handle = function (req, res, next) {
                 'application/x-git-' + service + '-advertisement'
             );
             noCache();
-            serviceRespond(service, path.join(repoDir, repo), res);
+            serviceRespond(service, repopath, res);
         };
         
         self.exists(repo, function (exists) {
@@ -103,9 +109,10 @@ Git.prototype.handle = function (req, res, next) {
     else if (req.method === 'GET'
     && (m = u.pathname.match(/^\/([^\/]+)\/HEAD$/))) {
         var repo = m[1];
+        var repopath = self.checkout ? path.join(repoDir, repo, '.git') : path.join(repoDir, repo)
         
         var next = function () {
-            var file = path.join(repoDir, repo, '.git', 'HEAD');
+            var file = path.join(repopath, 'HEAD');
             path.exists(file, function (ex) {
                 if (ex) fs.createReadStream(file).pipe(res)
                 else {
@@ -128,6 +135,7 @@ Git.prototype.handle = function (req, res, next) {
     else if (req.method === 'POST'
     && (m = req.url.match(/\/([^\/]+)\/git-(.+)/))) {
         var repo = m[1], service = m[2];
+        var repopath = self.checkout ? path.join(repoDir, repo, '.git') : path.join(repoDir, repo)
         
         if (services.indexOf(service) < 0) {
             res.statusCode = 405;
@@ -142,12 +150,18 @@ Git.prototype.handle = function (req, res, next) {
         
         var ps = spawn('git-' + service, [
             '--stateless-rpc',
-            path.join(repoDir, repo),
+            repopath,
         ]);
         ps.stdout.pipe(res);
         ps.on('exit', function (code) {
             if (service === 'receive-pack') {
-                self.emit('push', repo);
+                if (self.checkout) {
+                    exec('git reset --hard', {cwd:path.join(repoDir, repo)}, function () {
+                        self.emit('push', repo);
+                    })
+                } else {
+                    self.emit('push', repo);
+                }
             }
         });
         
