@@ -23,7 +23,13 @@ function Git (repoDir, opts) {
 Git.prototype = new EventEmitter;
 
 Git.prototype.listen = function () {
+    var self = this;
     var server = http.createServer(this.handle.bind(this));
+    server.on('listening', function () {
+        var args = Array.prototype.slice.call(arguments);
+        args.unshift('listening');
+        self.emit.apply(self, args);
+    });
     server.listen.apply(server, arguments);
     return server;
 };
