@@ -43,6 +43,7 @@ Git.prototype.exists = function (repo, cb) {
 };
 
 Git.prototype.create = function (repo, cb) {
+    var self = this;
     var cwd = process.cwd();
     var dir = path.join(this.repoDir, repo);
     if (this.checkout) {
@@ -57,7 +58,7 @@ Git.prototype.create = function (repo, cb) {
     ps.on('exit', function (code) {
         if (!cb) {}
         else if (code) cb(err || true)
-        else cb(null)
+        else { self.emit('create', dir); cb(null) }
     });
 };
 
