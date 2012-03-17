@@ -23,10 +23,9 @@
     "scripts" : {
         "test" : "tap test/*.js"
     },
-    "dependencies" : {
-        "seq" : "0.3.x"
-    },
+    "dependencies" : {},
     "devDependencies" : {
+        "seq" : "0.3.x",
         "tap" : "0.0.x"
     },
     "engines" : {
