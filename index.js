@@ -3,6 +3,7 @@ var url = require('url');
 var qs = require('querystring');
 var path = require('path');
 var http = require('http');
+var https = require('https');
 
 var spawn = require('child_process').spawn;
 var exec = require('child_process').exec;
@@ -18,14 +19,16 @@ function Git (repoDir, opts) {
     this.repoDir = repoDir;
     this.autoCreate = opts.autoCreate === false ? false : true;
     this.checkout = opts.checkout;
+    this.httpsOptions = opts.httpsOptions;
 }
 
 Git.prototype = new EventEmitter;
 
 Git.prototype.listen = function () {
     var self = this;
-    var server = http.createServer(this.handle.bind(this));
+    var server = this.createServer();
     server.on('listening', function () {
+        console.log('listening')
         var args = Array.prototype.slice.call(arguments);
         args.unshift('listening');
         self.emit.apply(self, args);
@@ -33,6 +36,12 @@ Git.prototype.listen = function () {
     server.listen.apply(server, arguments);
     return server;
 };
+
+Git.prototype.createServer = function () {
+    return typeof this.httpsOptions === 'object'
+        ? https.createServer(this.httpsOptions, this.handle.bind(this))
+        : http.createServer(this.handle.bind(this));
+} 
 
 Git.prototype.list = function (cb) {
     fs.readdir(this.repoDir, cb);
