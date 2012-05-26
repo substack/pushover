@@ -71,6 +71,12 @@ disable that behavior with `opts.autoCreate`.
 If `opts.checkout` is true, create and expected checked-out repos instead of
 bare repos.
 
+If `opts.httpsOptions` is defined, create an https server instead. These options
+are a passthru to the options passed to node core 
+[`https.createServer`](http://nodejs.org/api/https.html#https_https_createserver_options_requestlistener). 
+To use a self-signed cert or to ignore CA verification, you need to set `GIT_SSL_NO_VERIFY=1`
+in the shell where the `git push` will occur.
+
 repos.handle(req, res, next)
 ----------------------------
 
