@@ -211,5 +211,7 @@ function serviceRespond (service, file, res) {
     ]);
     ps.stdout.pipe(res, { end : false });
     ps.stderr.pipe(res, { end : false });
-    ps.on('exit', function () { res.end() });
+    var ev = 'close';
+    if (process.version.match(/^v0\.[0-6]\./)) ev = 'exit';
+    ps.on(ev, function () { res.end() });
 }
