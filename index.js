@@ -163,7 +163,8 @@ Git.prototype.handle = function (req, res, next) {
         );
         noCache();
         
-        var ps = spawn('git-' + service, [
+        var ps = spawn('git', [
+            service,
             '--stateless-rpc',
             repopath,
         ]);
@@ -204,12 +205,15 @@ function serviceRespond (service, file, res) {
     res.write(pack('# service=git-' + service + '\n'));
     res.write('0000');
     
-    var ps = spawn('git-' + service, [
+    var ps = spawn('git', [
+        service,
         '--stateless-rpc',
         '--advertise-refs',
         file
     ]);
     ps.stdout.pipe(res, { end : false });
     ps.stderr.pipe(res, { end : false });
-    ps.on('exit', function () { res.end() });
+    var ev = 'close';
+    if (process.version.match(/^v0\.[0-6]\./)) ev = 'exit';
+    ps.on(ev, function () { res.end() });
 }
