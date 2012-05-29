@@ -163,7 +163,8 @@ Git.prototype.handle = function (req, res, next) {
         );
         noCache();
         
-        var ps = spawn('git-' + service, [
+        var ps = spawn('git', [
+            service,
             '--stateless-rpc',
             repopath,
         ]);
@@ -204,7 +205,8 @@ function serviceRespond (service, file, res) {
     res.write(pack('# service=git-' + service + '\n'));
     res.write('0000');
     
-    var ps = spawn('git-' + service, [
+    var ps = spawn('git', [
+        service,
         '--stateless-rpc',
         '--advertise-refs',
         file
