@@ -39,7 +39,7 @@ Git.prototype.list = function (cb) {
 };
 
 Git.prototype.exists = function (repo, cb) {
-    path.exists(path.join(this.repoDir, repo), cb);
+    fs.exists(path.join(this.repoDir, repo), cb);
 };
 
 Git.prototype.create = function (repo, cb) {
@@ -125,7 +125,7 @@ Git.prototype.handle = function (req, res, next) {
         
         var next = function () {
             var file = path.join(repopath, 'HEAD');
-            path.exists(file, function (ex) {
+            fs.exists(file, function (ex) {
                 if (ex) fs.createReadStream(file).pipe(res)
                 else {
                     res.statusCode = 404;
