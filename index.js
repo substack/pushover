@@ -37,6 +37,29 @@ Git.prototype.list = function (cb) {
     fs.readdir(this.repoDir, cb);
 };
 
+Git.prototype.writeMessage = module.exports.writeMessage = function (string, pipe) {
+
+    // \2 is verbose messange defined by git protocol
+    // \r\n is optimized for recive method on git side see sideband.c
+
+    var msg = "\2" + string + "\r\n";
+    function dec2hex(i) {
+       return (i+0x10000).toString(16).substr(-4).toUpperCase();
+    }
+    // rpc messange consists of each line preceded by * its length (including the header) as a 4-byte hex number.
+    pipe.write(dec2hex(msg.length + 4) + msg);
+};
+
+Git.prototype.closeStream = module.exports.closeStream = function (mes, pipe) {
+    if (typeof mes == "string") {
+        this.writeMessage(mes);
+    }else{
+        mes=pipe;
+    }
+    // defiend as end of stream in sideband.c
+    pipe.end("0000");
+};
+
 Git.prototype.exists = function (repo, cb) {
     (fs.exists || path.exists)(path.join(this.repoDir, repo), cb);
 };
@@ -62,7 +85,7 @@ Git.prototype.create = function (repo, cb) {
 
 var services = [ 'upload-pack', 'receive-pack' ]
 
-Git.prototype.handle = function (req, res, next) {
+Git.prototype.handle = function (req, res, next, write_messages) {
     var self = this;
     var repoDir = self.repoDir;
     var u = url.parse(req.url);
@@ -164,18 +187,33 @@ Git.prototype.handle = function (req, res, next) {
         
         var ps = spawn('git-' + service, [
             '--stateless-rpc',
-            repopath,
+            repopath
         ]);
-        ps.stdout.pipe(res);
+
+        //this.writePacket("-->| Pushover power!!", res);
+        if (!write_messages) {
+            ps.stdout.pipe(res,{ end : !write_messages });
+        }else{
+            ps.stdout.on("data",function(data) {
+
+                // end of transmission, aka git flush command
+                // could also be data[0]!== 48 && data[1]!== 48 && data[2]!== 48 && data[3]
+                if (data.length != 4) {
+                    res.write(data);
+                }
+            });
+        }
+        
         onexit(ps, function (code) {
             if (service === 'receive-pack') {
+
                 if (self.checkout) {
                     var opts = { cwd : path.join(repoDir, repo) };
                     exec('git reset --hard', opts, function () {
-                        self.emit('push', repo, commit, branch);
+                        self.emit('push', repo, commit, branch, res);
                     });
                 }
-                else self.emit('push', repo, commit, branch)
+                else self.emit('push', repo, commit, branch, res)
             }
         });
         
