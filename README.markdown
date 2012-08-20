@@ -12,10 +12,10 @@ This library makes it super easy to set up custom git push deploy logic.
 var pushover = require('pushover');
 var repos = pushover(__dirname + '/repos');
 
-repos.on('push', function (repo, commit, branch) {
+repos.on('push', function (repo) {
     console.log(
-        'received a push to ' + repo + '/' + commit
-        + ' (' + branch + ')'
+        'received a push to ' + repo.name + '/' + repo.commit
+        + ' (' + repo.branch + ')'
     );
 });
 
@@ -51,7 +51,7 @@ received a push to beep/d5013a53a0e139804e729a12107fc212f11e64c3 (master)
 
 # methods
 
-var pushover = require('pushover')
+    var pushover = require('pushover')
 
 ## var repos = pushover(repoDir, opts={autoCreate:true})
 
@@ -66,6 +66,8 @@ disable that behavior with `opts.autoCreate`.
 
 If `opts.checkout` is true, create and expected checked-out repos instead of
 bare repos.
+
+If `opts.write_messages` is true, you can write messages to git client.
 
 ## repos.handle(req, res, next)
 
@@ -97,9 +99,13 @@ Find out whether `repoName` exists in the callback `cb(exists)`.
 
 # events
 
-## repos.on('push', function (repo, commit, branch) { ... }
+## repos.on('push', function (repo, res) { ... }
 
 Emitted when somebody does a `git push` to the repo.
+
+`repo` is object with `name, commit, branch`
+
+`res` can be used to write custom messages with `res.write(string)`, `res.error(string)`, `res.end(string|undefined)`, but only if you enabled it with `opts.write_messages`.
 
 # install
 

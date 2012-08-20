@@ -16,10 +16,11 @@ module.exports = function (repoDir, opts) {
 function Git (repoDir, opts) {
     this.repoDir = repoDir;
     this.autoCreate = opts.autoCreate === false ? false : true;
+    this.write_messages = opts.write_messages;
     this.checkout = opts.checkout;
 }
 
-Git.prototype = new EventEmitter;
+Git.prototype = new EventEmitter();
 
 Git.prototype.listen = function () {
     var self = this;
@@ -44,23 +45,24 @@ Git.prototype.exists = function (repo, cb) {
 Git.prototype.create = function (repo, cb) {
     var cwd = process.cwd();
     var dir = path.join(this.repoDir, repo);
+    var ps;
     if (this.checkout) {
-        var ps = spawn('git', [ 'init', dir ]);
+        ps = spawn('git', [ 'init', dir ]);
     } else {
-        var ps = spawn('git', [ 'init', '--bare', dir ]);
+        ps = spawn('git', [ 'init', '--bare', dir ]);
     }
     
     var err = '';
-    ps.stderr.on('data', function (buf) { err += buf });
+    ps.stderr.on('data', function (buf) { err += buf; });
     
     onexit(ps, function (code) {
         if (!cb) {}
-        else if (code) cb(err || true)
-        else cb(null)
+        else if (code) cb(err || true);
+        else cb(null);
     });
 };
 
-var services = [ 'upload-pack', 'receive-pack' ]
+var services = [ 'upload-pack', 'receive-pack' ];
 
 Git.prototype.handle = function (req, res, next) {
     var self = this;
@@ -96,7 +98,7 @@ Git.prototype.handle = function (req, res, next) {
             return;
         }
         
-        var next = function () {
+        next = function () {
             res.setHeader('content-type',
                 'application/x-git-' + service + '-advertisement'
             );
@@ -105,13 +107,13 @@ Git.prototype.handle = function (req, res, next) {
         };
         
         self.exists(repo, function (ex) {
-            if (!ex && self.autoCreate) self.create(repo, next)
+            if (!ex && self.autoCreate) self.create(repo, next);
             else if (!ex) {
                 res.statusCode = 404;
                 res.setHeader('content-type', 'text/plain');
                 res.end('repository not found');
             }
-            else next()
+            else next();
         });
     }
     else if (req.method === 'GET'
@@ -122,25 +124,25 @@ Git.prototype.handle = function (req, res, next) {
             : path.join(repoDir, repo)
         ;
         
-        var next = function () {
+        next = function () {
             var file = path.join(repopath, 'HEAD');
             (fs.exists || path.exists)(file, function (ex) {
-                if (ex) fs.createReadStream(file).pipe(res)
+                if (ex) fs.createReadStream(file).pipe(res);
                 else {
                     res.statusCode = 404;
                     res.end('not found');
                 }
             });
-        }
+        };
         
         self.exists(repo, function (ex) {
-            if (!ex && self.autoCreate) self.create(repo, next)
+            if (!ex && self.autoCreate) self.create(repo, next);
             else if (!ex) {
                 res.statusCode = 404;
                 res.setHeader('content-type', 'text/plain');
                 res.end('repository not found');
             }
-            else next()
+            else next();
         });
     }
     else if (req.method === 'POST'
@@ -164,18 +166,40 @@ Git.prototype.handle = function (req, res, next) {
         
         var ps = spawn('git-' + service, [
             '--stateless-rpc',
-            repopath,
+            repopath
         ]);
-        ps.stdout.pipe(res);
+
+        //this.writePacket("-->| Pushover power!!", res);
+        if (!self.write_messages) {
+            ps.stdout.pipe(res,{ end : !self.write_messages });
+        }else{
+            var _GitMessage = new GitMessage(res);
+            ps.stdout.on("data",function(data) {
+
+                // end of transmission(git flush command)
+                // could also be data[0]!== 48 && data[1]!== 48 && data[2]!== 48 && data[3]
+                if (data.length != 4) {
+                    res.write(data);
+                }
+            });
+        }
+        
         onexit(ps, function (code) {
             if (service === 'receive-pack') {
+
+                var _repo = {
+                    name: repo,
+                    commit: commit,
+                    branch: branch
+                };
+
                 if (self.checkout) {
                     var opts = { cwd : path.join(repoDir, repo) };
                     exec('git reset --hard', opts, function () {
-                        self.emit('push', repo, commit, branch);
+                        self.emit('push', _repo, _GitMessage);
                     });
                 }
-                else self.emit('push', repo, commit, branch)
+                else self.emit('push', _repo, _GitMessage);
             }
         });
         
@@ -211,6 +235,39 @@ Git.prototype.handle = function (req, res, next) {
     }
 };
 
+
+function GitMessage(stream) {
+    this.stream = stream;
+}
+
+GitMessage.prototype._pack = function(type, msg) {
+    var length;
+    msg = type + msg;
+
+    // rpc messange consists of each line preceded by its length (including the header) as a 4-byte hex number.
+    length = (msg.length + 4 + 0x10000).toString(16).substr(-4).toUpperCase();
+    return length + msg;
+};
+
+GitMessage.prototype.end = function(msg) {
+    // must be called on the end
+    if (msg) {
+      this.write(msg);
+    }
+    return this.stream.end("00000000");
+};
+
+GitMessage.prototype.write = function(msg) {
+    // \2 is verbose messange defined by git protocol
+    return this.stream.write(this._pack("\u0002", msg));
+};
+
+GitMessage.prototype.error = function(msg) {
+    // \3 is error message defined by git protocol
+    this.stream.write(this._pack("\u0003", msg));
+    return this.end;
+};
+
 function serviceRespond (service, file, res) {
     function pack (s) {
         var n = (4 + s.length).toString(16);
@@ -227,7 +284,7 @@ function serviceRespond (service, file, res) {
     ps.stdout.pipe(res, { end : false });
     ps.stderr.pipe(res, { end : false });
     
-    onexit(ps, function () { res.end() });
+    onexit(ps, function () { res.end(); });
 }
 
 function onexit (ps, cb) {

@@ -21,7 +21,7 @@
         "test" : "test"
     },
     "scripts" : {
-        "test" : "tap test/*.js"
+        "test" : "tap --tap test/*.js"
     },
     "devDependencies" : {
         "tap" : "~0.2.5",

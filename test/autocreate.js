@@ -66,6 +66,6 @@ test('create, push to, and clone a repo', function (t) {
     ;
     
     repos.on('push', function (repo) {
-        t.equal(repo, 'doom');
+        t.equal(repo.name, 'doom', "repo name");
     });
 });
