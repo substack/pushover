@@ -242,7 +242,7 @@ function GitMessage(stream) {
 
 GitMessage.prototype._pack = function(type, msg) {
     var length;
-    msg = type + string;
+    msg = type + msg;
 
     // rpc messange consists of each line preceded by its length (including the header) as a 4-byte hex number.
     length = (msg.length + 4 + 0x10000).toString(16).substr(-4).toUpperCase();
@@ -254,7 +254,7 @@ GitMessage.prototype.end = function(msg) {
     if (msg) {
       this.write(msg);
     }
-    return this.stream.end("0000");
+    return this.stream.end("00000000");
 };
 
 GitMessage.prototype.write = function(msg) {
@@ -263,7 +263,7 @@ GitMessage.prototype.write = function(msg) {
 };
 
 GitMessage.prototype.error = function(msg) {
-    // \3 is error messange defined by git protocol
+    // \3 is error message defined by git protocol
     this.stream.write(this._pack("\u0003", msg));
     return this.end;
 };

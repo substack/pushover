@@ -10,8 +10,8 @@ var exec = require('child_process').exec;
 
 var seq = require('seq');
 
-test('create, push to, and clone a repo', function (t) {
-    t.plan(5);
+test('create, adn push to a repo with custom messages', function (t) {
+    t.plan(6);
     
     var repoDir = '/tmp/' + Math.floor(Math.random() * (1<<30)).toString(16);
     var srcDir = '/tmp/' + Math.floor(Math.random() * (1<<30)).toString(16);
@@ -22,7 +22,7 @@ test('create, push to, and clone a repo', function (t) {
     fs.mkdirSync(srcDir, 0700);
     fs.mkdirSync(dstDir, 0700);
     
-    var repos = pushover(repoDir, { autoCreate : false });
+    var repos = pushover(repoDir, { autoCreate : false, write_messages: true  });
     var port = Math.floor(Math.random() * ((1<<16) - 1e4)) + 1e4;
     var server = repos.listen(port);
     
@@ -55,18 +55,15 @@ test('create, push to, and clone a repo', function (t) {
                 'push', 'http://localhost:' + port + '/doom', 'master'
             ]);
             ps.stderr.pipe(process.stderr, { end : false });
+            ps.stderr.on("data", function(data) {
+                if (data.toString().indexOf("!!Pushover power!!") !== -1) {
+                    t.ok(true, "!!Pushover power!! was found!");
+                }
+                if (data.toString().indexOf("!!ZERG!!") !== -1) {
+                    t.ok(true, "!!ZERG!! was found!");
+                }
+            });
             ps.on('exit', this.ok);
-        })
-        .seq(function () {
-            process.chdir(dstDir);
-            spawn('git', [ 'clone', 'http://localhost:' + port + '/doom' ])
-                .on('exit', this.ok)
-        })
-        .seq_(function (next) {
-            exists(dstDir + '/doom/a.txt', function (ex) {
-                t.ok(ex, 'a.txt exists');
-                next();
-            })
         })
         .seq(function () {
             server.close();
@@ -76,9 +73,11 @@ test('create, push to, and clone a repo', function (t) {
     ;
     
     repos.on('push', function (repo, res) {
+        t.type(res.end, "function", "messages enabled");
         t.equal(repo.name, 'doom', "repo name");
         t.equal(repo.commit, lastCommit, "commit");
         t.equal(repo.branch, 'master', "branch");
-        t.equal(res, undefined, "messages not enabled");
+        res.write("!!ZERG!!\r\n");
+        res.end("!!Pushover power!!\r\n");
     });
 });
