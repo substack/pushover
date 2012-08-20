@@ -1,10 +1,10 @@
 var pushover = require('pushover');
 var repos = pushover(__dirname + '/repos');
 
-repos.on('push', function (repo, commit, branch) {
+repos.on('push', function (repo) {
     console.log(
-        'received a push to ' + repo + '/' + commit
-        + ' (' + branch + ')'
+        'received a push to ' + repo.name + '/' + repo.commit
+        + ' (' + repo.branch + ')'
     );
 });
 

@@ -67,24 +67,14 @@ disable that behavior with `opts.autoCreate`.
 If `opts.checkout` is true, create and expected checked-out repos instead of
 bare repos.
 
-## repos.handle(req, res, next, write_messages)
+If `opts.write_messages` is true, you can write messages to git client.
+
+## repos.handle(req, res, next)
 
 Handle incoming HTTP requests with a connect-style middleware.
 
 Everything is admin-party by default.
 Check the credentials further up the stack using basic auth or whatevs.
-
-write_messages(default false) is used to prevent git closeStream command, so you can write custom data to git client using pushover.writeMessage
-
-## pushover.writeMessage(mes, res)
-  
-  Used to write messages to git client! You must use custom handler and end transmission with pushover.closeStream();
-
-  Note, mes is asci only!
-
-## pushover.closeStream (res)
-
-  Closes stream, used only with pushover.writeMessage and write_messages
 
 ## repos.listen(...)
 
@@ -109,12 +99,14 @@ Find out whether `repoName` exists in the callback `cb(exists)`.
 
 # events
 
-## repos.on('push', function (repo, commit, branch, res) { ... }
+## repos.on('push', function (repo, res) { ... }
 
 Emitted when somebody does a `git push` to the repo.
 
-res is Stream from connect, which can be used to write custom messages with pushover.writeStream(string, res).
-You must end this stream with pushover.closeStream()
+repo is object with name, commit, branch
+
+res can be used to write custom messages with res.write(string), res.error(string), res.end(string|undefined), but only if you enabled this with opts.write_messages.
+
 # install
 
 With [npm](http://npmjs.org) do:

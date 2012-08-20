@@ -1,6 +1,6 @@
 var pushover = require('pushover');
 var connect = require('connect');
-var repos = pushover(__dirname + '/repos');
+var repos = pushover(__dirname + '/repos', {write_messages:true});
 
 var app = connect();
 
@@ -14,11 +14,11 @@ app.use(function(req, res, next) {
   }
 });
 
-repos.on('push', function (repo, commit, branch, res) {
-    repos.writeMessage("--> | Pushover in power!" ,res);
+repos.on('push', function (repo, res) {
+    res.write("--> | Pushover in power!");
     // meanwhile in git console
     // remote: --> | Pushover in power!
-    repos.closeStream(res);
+    res.end("End me! " + repo.name);
 });
 
 app.listen(7000);
