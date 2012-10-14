@@ -12,7 +12,7 @@ var http = require('http');
 var seq = require('seq');
 
 test('create, push to, and clone a repo', function (t) {
-    t.plan(7);
+    t.plan(17);
     
     var repoDir = '/tmp/' + Math.floor(Math.random() * (1<<30)).toString(16);
     var srcDir = '/tmp/' + Math.floor(Math.random() * (1<<30)).toString(16);
@@ -46,6 +46,22 @@ test('create, push to, and clone a repo', function (t) {
         })
         .seq_(function (next) {
             var ps = spawn('git', [ 'commit', '-am', 'a!!' ]);
+            ps.on('exit', this.ok);
+            ps.stdout.pipe(process.stdout, { end : false });
+        })
+        .seq(function () {
+            var ps = spawn('git', ['tag', '0.0.1']);
+            ps.stderr.pipe(process.stderr, { end : false });
+            ps.on('exit', this.ok);
+        })
+        .seq(function () {
+            fs.writeFile(srcDir + '/a.txt', 'efgh', this);
+        })
+        .seq(function () {
+            spawn('git', [ 'add', 'a.txt' ]).on('exit', this.ok)
+        })
+        .seq_(function (next) {
+            var ps = spawn('git', [ 'commit', '-am', 'a!!' ]);
             ps.on('exit', function () {
                 exec('git log | head -n1', function (err, stdout) {
                     lastCommit = stdout.split(/\s+/)[1];
@@ -55,8 +71,13 @@ test('create, push to, and clone a repo', function (t) {
             ps.stdout.pipe(process.stdout, { end : false });
         })
         .seq(function () {
+            var ps = spawn('git', ['tag', '0.0.2']);
+            ps.stderr.pipe(process.stderr, { end : false });
+            ps.on('exit', this.ok);
+        })
+        .seq(function () {
             var ps = spawn('git', [
-                'push', 'http://localhost:' + port + '/doom', 'master'
+                'push', '--tags', 'http://localhost:' + port + '/doom', 'master'
             ]);
             ps.stderr.pipe(process.stderr, { end : false });
             ps.on('exit', this.ok);
@@ -89,5 +110,18 @@ test('create, push to, and clone a repo', function (t) {
         t.equal(push.url, '/doom/git-receive-pack', 'receive pack');
         
         push.accept();
+    });
+
+    var firstTag = true;
+    repos.on('tag', function (tag) {
+        t.equal(tag.repo, 'doom', 'repo name');
+        t.equal(tag.version, '0.0.' + (firstTag? 1 : 2), 'tag received');
+
+        t.equal(tag.headers.host, 'localhost:' + port, 'http host');
+        t.equal(tag.method, 'POST', 'is a post');
+        t.equal(tag.url, '/doom/git-receive-pack', 'receive pack');
+
+        tag.accept();
+        firstTag = false;
     });
 });

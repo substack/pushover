@@ -129,6 +129,19 @@ no listeners, `push.accept()` is called automatically.
 * push.commit
 * push.branch
 
+## repos.on('tag', function (tag) { ... }
+
+Emitted when somebody does a `git push --tags` to the repo.
+
+Exactly one listener must call `tag.accept()` or `tag.reject()`. If there are
+no listeners, `tag.accept()` is called automatically.
+
+`tag` is an http duplex object (see below) with these extra properties:
+
+* tag.repo
+* tag.commit
+* tag.version
+
 ## repos.on('fetch', function (fetch) { ... }
 
 Emitted when somebody does a `git fetch` to the repo (which happens whenever you
