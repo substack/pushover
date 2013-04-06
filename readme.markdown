@@ -30,7 +30,7 @@ var http = require('http');
 var server = http.createServer(function (req, res) {
     repos.handle(req, res);
 });
-server.listen(7005);
+server.listen(7000);
 ```
 
 then start up the pushover server...
