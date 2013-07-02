@@ -12,7 +12,7 @@ module.exports = function (repoDir, opts) {
     if (!opts) opts = {};
     var dirMap = typeof repoDir === 'function'
         ? repoDir
-        : function (dir) { return path.join(repoDir, dir) }
+        : function (dir) { return path.join(repoDir, dir || '') }
     ;
     return new Git(dirMap, opts);
 };
