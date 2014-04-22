@@ -19,7 +19,7 @@ module.exports = function (repoDir, opts) {
 };
 
 function Git (dirMap, opts) {
-	EventEmitter.call(this);
+    EventEmitter.call(this);
 
     this.dirMap = dirMap;
     this.autoCreate = opts.autoCreate === false ? false : true;
