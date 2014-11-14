@@ -87,7 +87,7 @@ test('create, push to, and clone a repo', function (t) {
             var data = '';
             glog.stderr.on('data', function (buf) { data += buf });
             glog.stderr.on('end', function (buf) {
-                t.ok(/bad default revision 'HEAD'/.test(data));
+                t.ok(/bad default revision 'HEAD'/.test(data), 'bad default revision');
             });
         })
         .catch(t.fail)
